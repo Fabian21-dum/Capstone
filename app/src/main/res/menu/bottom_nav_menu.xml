@@ -8,15 +8,15 @@
         android:title="@string/title_home" />
 
     <item
-        android:id="@+id/navigation_dashboard"
+        android:id="@+id/navigation_alphabets"
         android:iconTint="@color/bright_blue"
-        android:icon="@drawable/ic_dashboard_black_24dp"
-        android:title="@string/title_dashboard" />
+        android:icon="@drawable/baseline_abc_24"
+        android:title="@string/alphabets" />
 
     <item
-        android:id="@+id/navigation_notifications"
+        android:id="@+id/navigation_gestures"
         android:iconTint="@color/bright_blue"
-        android:icon="@drawable/ic_notifications_black_24dp"
-        android:title="@string/title_notifications" />
+        android:icon="@drawable/ic_hand"
+        android:title="@string/gestures" />
 
 </menu>
