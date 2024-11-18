@@ -17,14 +17,14 @@
             motion:layout_constraintVertical_bias="0.0"
             android:layout_height="484dp"
             motion:layout_constraintStart_toStartOf="parent"
-            android:layout_marginTop="0dp"
             android:layout_marginBottom="18dp"
             motion:layout_constraintBottom_toBottomOf="parent"
             motion:layout_constraintHorizontal_bias="1.0"
             motion:layout_constraintEnd_toEndOf="parent"
             android:layout_width="409dp"
             motion:layout_constraintTop_toBottomOf="@id/logo"
-            android:id="@+id/clouds" />
+            android:id="@+id/clouds"
+            android:translationY="-50dp" />
         <Constraint
             android:id="@+id/cloudsup"
             android:layout_width="409dp"
@@ -69,16 +69,17 @@
 
     <ConstraintSet android:id="@+id/end">
         <Constraint
-            android:id="@+id/clouds"
+            motion:layout_constraintVertical_bias="0.0"
+            android:layout_height="484dp"
+            motion:layout_constraintStart_toStartOf="parent"
+            android:layout_marginBottom="18dp"
+            motion:layout_constraintBottom_toBottomOf="parent"
+            motion:layout_constraintHorizontal_bias="1.0"
             motion:layout_constraintEnd_toEndOf="parent"
             android:layout_width="409dp"
-            android:layout_height="484dp"
-            motion:layout_constraintBottom_toBottomOf="parent"
-            motion:layout_constraintVertical_bias="0.81"
             motion:layout_constraintTop_toBottomOf="@id/logo"
-            motion:layout_constraintHorizontal_bias="1.0"
-            motion:layout_constraintStart_toStartOf="parent"
-            android:layout_marginTop="250dp" />
+            android:id="@+id/clouds"
+            android:translationY="-150dp" />
 
         <Constraint
             android:layout_width="600dp"

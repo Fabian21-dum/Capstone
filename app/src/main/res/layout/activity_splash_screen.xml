@@ -25,16 +25,16 @@
 
     <ImageView
         android:id="@+id/clouds"
-        android:layout_width="409dp"
-        android:layout_height="484dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:src="@drawable/clouds"
         tools:layout_editor_absoluteX="16dp"
         tools:layout_editor_absoluteY="-18dp" />
 
     <ImageView
         android:id="@+id/cloudup"
-        android:layout_width="631dp"
-        android:layout_height="643dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_marginEnd="16dp"
         android:src="@drawable/cloudup"
         app:layout_constraintEnd_toEndOf="parent"
