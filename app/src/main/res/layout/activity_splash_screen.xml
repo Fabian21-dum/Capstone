@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.motion.widget.MotionLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    app:layoutDescription="@xml/activity_splash_screen_scene2"
+    tools:context=".SplashScreenActivity">
+
+    <ImageView
+        android:id="@+id/logo"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+
+        android:layout_marginTop="252dp"
+        android:layout_marginBottom="18dp"
+        android:src="@drawable/logo"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.497"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.0" />
+
+    <ImageView
+        android:id="@+id/clouds"
+        android:layout_width="409dp"
+        android:layout_height="484dp"
+        android:src="@drawable/clouds"
+        tools:layout_editor_absoluteX="16dp"
+        tools:layout_editor_absoluteY="-18dp" />
+
+    <ImageView
+        android:id="@+id/cloudup"
+        android:layout_width="631dp"
+        android:layout_height="643dp"
+        android:layout_marginEnd="16dp"
+        android:src="@drawable/cloudup"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:layout_editor_absoluteY="53dp" />
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="TellMe"
+        android:gravity="center"
+        android:textColor="@color/blue"
+        android:textStyle="bold"
+        android:textSize="35dp"
+
+        app:layout_constraintTop_toBottomOf="@id/logo"
+        android:id="@+id/text"/>
+
+</androidx.constraintlayout.motion.widget.MotionLayout>
