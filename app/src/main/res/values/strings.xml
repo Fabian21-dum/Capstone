@@ -8,4 +8,8 @@
     <string name="gestures">Gestures</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="screen1">Translate Sign Language\nWith Your Camera</string>
+    <string name="btntxt2">Get Started</string>
+    <string name="screen2">Learn the basics of \nSign Language</string>
+    <string name="btntext1">Next</string>
 </resources>

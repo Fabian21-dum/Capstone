@@ -7,6 +7,10 @@ android {
     namespace = "com.example.capstone"
     compileSdk = 35
 
+    buildFeatures{
+        viewBinding = true
+    }
+
     defaultConfig {
         applicationId = "com.example.capstone"
         minSdk = 27
@@ -53,4 +57,5 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     implementation("androidx.core:core-splashscreen:1.0.0")
+    implementation("com.tbuonomo:dotsindicator:5.0")
 }
