@@ -2,14 +2,14 @@
     <!-- Base application theme. -->
     <style name="Base.Theme.Capstone" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/med_blue</item>
-    <item name="colorPrimaryVariant">@color/blue</item>
-    <item name="colorOnPrimary">@color/white</item>
-    <!-- Secondary brand color. -->
-    <item name="colorSecondary">@color/med_blue</item>
-    <item name="colorSecondaryVariant">@color/med_blue</item>
-    <item name="colorOnSecondary">@color/black</item>
-    <!-- Status bar color. -->
-    <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        <item name="colorPrimaryVariant">@color/blue</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">@color/med_blue</item>
+        <item name="colorSecondaryVariant">@color/med_blue</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <!-- Status bar color. -->
+        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
     </style>
 
     <style name="Theme.Capstone" parent="Base.Theme.Capstone" />
