@@ -41,6 +41,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+
         if (!allPermissionsGranted()) {
             //request permission
             requestPermissionLauncher.launch(REQUIRED_PERMISSION)
