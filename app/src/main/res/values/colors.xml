@@ -5,4 +5,7 @@
     <color name="blue">#0078B0</color>
     <color name="bright_blue">#E0F5FF</color>
     <color name="med_blue">#9BDFFF</color>
+    <color name="light_blue">#DBF3FE</color>
+    <color name="card">#ADE5FF</color>
+    <color name="blueish_white">#F4FBFF</color>
 </resources>

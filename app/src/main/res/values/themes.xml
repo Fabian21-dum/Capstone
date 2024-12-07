@@ -19,5 +19,4 @@
         <item name="windowSplashScreenAnimatedIcon">@drawable/logo</item>
         <item name="postSplashScreenTheme">@style/Base.Theme.Capstone</item>
     </style>
-
 </resources>

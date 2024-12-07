@@ -2,10 +2,8 @@
     <string name="app_name">Capstone</string>
     <string name="title_activity_main">MainActivity</string>
     <string name="title_home">Home</string>
-    <string name="title_dashboard">Dashboard</string>
-    <string name="title_notifications">Notifications</string>
-    <string name="alphabets">Alphabets</string>
-    <string name="gestures">Gestures</string>
+    <string name="title_alphabets">Alphabets</string>
+    <string name="title_gestures">Gestures</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="screen1">Translate Sign Language\nWith Your Camera</string>
@@ -13,8 +11,6 @@
     <string name="screen2">Learn the basics of \nSign Language</string>
     <string name="btntext1">Next</string>
     <!-- Strings used for fragments for navigation -->
-    <string name="first_fragment_label">First Fragment</string>
-    <string name="second_fragment_label">Second Fragment</string>
     <string name="next">Next</string>
     <string name="previous">Previous</string>
 
@@ -54,4 +50,8 @@
         libero vel nunc consequat, quis tincidunt nisl eleifend. Cras bibendum enim a justo luctus
         vestibulum. Fusce dictum libero quis erat maximus, vitae volutpat diam dignissim.
     </string>
+    <string name="gestures_title">Words in Sign</string>
+    <string name="gestures_description">The words that you can learn in sign</string>
+    <string name="action_play">Play</string>
+    <string name="alphabets_title">Learn the alphabets in sign</string>
 </resources>
