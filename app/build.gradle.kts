@@ -41,6 +41,9 @@ android {
     buildFeatures {
         viewBinding = true
     }
+    compileOptions {
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
 }
 
 dependencies {
@@ -63,4 +66,8 @@ dependencies {
     implementation(libs.androidx.camera.camera2)
     implementation(libs.camera.lifecycle)
     implementation(libs.camera.view)
+
+    implementation("androidx.media3:media3-exoplayer:1.5.0")
+    implementation("androidx.media3:media3-exoplayer-dash:1.5.0")
+    implementation("androidx.media3:media3-ui:1.5.0")
 }
