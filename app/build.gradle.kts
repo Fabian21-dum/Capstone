@@ -41,6 +41,7 @@ android {
     }
     buildFeatures {
         viewBinding = true
+        mlModelBinding = true
     }
     compileOptions {
         targetCompatibility = JavaVersion.VERSION_1_8
@@ -48,6 +49,7 @@ android {
 }
 
 dependencies {
+    val cameraxVersion = "1.3.0"
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
@@ -58,15 +60,20 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.androidx.navigation.ui.ktx)
+
+    implementation(libs.tensorflow.lite.support)
+    implementation(libs.tensorflow.lite.metadata)
+    implementation(libs.tensorflow.lite.task.vision,)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     implementation("androidx.core:core-splashscreen:1.0.0")
     implementation("com.tbuonomo:dotsindicator:5.0")
 
-    implementation(libs.androidx.camera.camera2)
-    implementation(libs.camera.lifecycle)
-    implementation(libs.camera.view)
+    implementation("androidx.camera:camera-camera2:$cameraxVersion")
+    implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
+    implementation("androidx.camera:camera-view:$cameraxVersion")
 
     implementation("androidx.media3:media3-exoplayer:1.5.0")
     implementation("androidx.media3:media3-exoplayer-dash:1.5.0")
