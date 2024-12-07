@@ -11,12 +11,12 @@
         android:id="@+id/navigation_alphabets"
         android:iconTint="@color/bright_blue"
         android:icon="@drawable/baseline_abc_24"
-        android:title="@string/alphabets" />
+        android:title="@string/title_alphabets" />
 
     <item
         android:id="@+id/navigation_gestures"
         android:iconTint="@color/bright_blue"
         android:icon="@drawable/ic_hand"
-        android:title="@string/gestures" />
+        android:title="@string/title_gestures" />
 
 </menu>
