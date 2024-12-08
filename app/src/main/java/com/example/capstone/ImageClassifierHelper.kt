@@ -18,19 +18,19 @@ import org.tensorflow.lite.support.image.ImageProcessor
 import org.tensorflow.lite.support.image.TensorImage
 import org.tensorflow.lite.support.image.ops.ResizeOp
 import org.tensorflow.lite.task.core.vision.ImageProcessingOptions
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 
 class ImageClassifierHelper(
     var threshold: Float = 0.1f,
     var maxResults: Int = 3,
-    val modelName: String = "model_asltflite_with_metadata.tflite",
+    val modelName: String = "1.tflite",
     val context: Context,
     val classifierListener: ClassifierListener?
 ) {
     private var imageClassifier: ImageClassifier? = null
 
-    init {
-        setupImageClassifier()
-    }
 
     private fun setupImageClassifier() {
         val optionsBuilder = ImageClassifier.ImageClassifierOptions.builder()
@@ -53,18 +53,21 @@ class ImageClassifierHelper(
     }
 
     fun classifyImage(image: ImageProxy) {
+
         if (imageClassifier == null) {
             setupImageClassifier()
         }
 
         val imageProcessor = ImageProcessor.Builder()
-            .add(ResizeOp(71, 71, ResizeOp.ResizeMethod.NEAREST_NEIGHBOR))
-            .add(NormalizeOp(-2.12f, (1136.36f + 2.12f))) // Normalization based on metadata
+            .add(ResizeOp(224, 224, ResizeOp.ResizeMethod.NEAREST_NEIGHBOR))
+//            .add(NormalizeOp(0f, 225f))
+            .add(CastOp(DataType.UINT8))
             .build()
 
-        val tensorImage = imageProcessor.process(TensorImage(DataType.FLOAT32).apply {
-            load(toBitmap(image))
-        })
+        val tensorImage = imageProcessor.process(TensorImage.fromBitmap(toBitmap(image)))
+
+        val processedBitmap = tensorImage.bitmap
+        saveBitmapToFile(processedBitmap, "processed_frame.jpg")
 
         val imageProcessingOptions = ImageProcessingOptions.builder()
             .setOrientation(getOrientationFromRotation(image.imageInfo.rotationDegrees))
@@ -73,17 +76,23 @@ class ImageClassifierHelper(
         var inferenceTime = SystemClock.uptimeMillis()
         val results = imageClassifier?.classify(tensorImage, imageProcessingOptions)
         inferenceTime = SystemClock.uptimeMillis() - inferenceTime
-
-        // Process and map results
-        val labels = ('A'..'Z').toList()
-        val formattedResults = results?.firstOrNull()?.categories?.map {
-            "${labels[it.index]}: ${it.score}"
-        }
-
         classifierListener?.onResults(
             results,
             inferenceTime
         )
+    }
+
+    private fun saveBitmapToFile(bitmap: Bitmap, fileName: String) {
+        try {
+            val file = File(context.getExternalFilesDir(null), fileName)
+            val outputStream = FileOutputStream(file)
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+            outputStream.flush()
+            outputStream.close()
+            Log.d("ImageClassifierHelper", "Saved bitmap to ${file.absolutePath}")
+        } catch (e: IOException) {
+            Log.e("ImageClassifierHelper", "Error saving bitmap", e)
+        }
     }
 
     private fun toBitmap(image: ImageProxy): Bitmap {
