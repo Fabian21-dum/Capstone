@@ -12,16 +12,24 @@
         tools:layout="@layout/fragment_home" />
 
     <fragment
-        android:id="@+id/navigation_dashboard"
-        android:name="com.example.capstone.ui.dashboard.DashboardFragment"
-        android:label="@string/title_dashboard"
-        tools:layout="@layout/fragment_dashboard" />
+        android:id="@+id/navigation_alphabets"
+        android:name="com.example.capstone.ui.alphabets.AlphabetsFragment"
+        android:label="@string/title_alphabets"
+        tools:layout="@layout/fragment_alphabets" >
+        <action
+            android:id="@+id/action_navigation_alphabets_to_alphabetDetailFragment"
+            app:destination="@id/navigation_alphabet_detail" />
+    </fragment>
 
     <fragment
-        android:id="@+id/navigation_notifications"
+        android:id="@+id/navigation_gestures"
         android:name="com.example.capstone.ui.gestures.GesturesFragment"
-        android:label="@string/title_notifications"
-        tools:layout="@layout/fragment_gestures" />
+        android:label="@string/title_gestures"
+        tools:layout="@layout/fragment_gestures" >
+        <action
+            android:id="@+id/action_navigation_gestures_to_gestureDetailFragment"
+            app:destination="@id/navigation_gesture_detail" />
+    </fragment>
     <activity
         android:id="@+id/splashScreenActivity"
         android:name="com.example.capstone.SplashScreenActivity"
@@ -32,4 +40,22 @@
         android:name="com.example.capstone.OnBoardingFrament"
         android:label="fragment_on_boarding_frament"
         tools:layout="@layout/fragment_on_boarding_frament" />
+    <fragment
+        android:id="@+id/navigation_gesture_detail"
+        android:name="com.example.capstone.ui.gestures.detail.GestureDetailFragment"
+        android:label="fragment_gesture_detail"
+        tools:layout="@layout/fragment_gesture_detail" >
+        <argument
+            android:name="word"
+            app:argType="com.example.capstone.data.model.Word" />
+    </fragment>
+    <fragment
+        android:id="@+id/navigation_alphabet_detail"
+        android:name="com.example.capstone.ui.alphabets.detail.AlphabetDetailFragment"
+        android:label="fragment_alphabet_detail"
+        tools:layout="@layout/fragment_alphabet_detail" >
+        <argument
+            android:name="alphabet"
+            app:argType="com.example.capstone.data.model.Alphabet" />
+    </fragment>
 </navigation>
