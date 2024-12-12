@@ -25,7 +25,7 @@ import java.io.IOException
 class ImageClassifierHelper(
     var threshold: Float = 0.1f,
     var maxResults: Int = 3,
-    val modelName: String = "1.tflite",
+    val modelName: String = "model_asltflite_with_metadata.tflite",
     val context: Context,
     val classifierListener: ClassifierListener?
 ) {
@@ -59,9 +59,9 @@ class ImageClassifierHelper(
         }
 
         val imageProcessor = ImageProcessor.Builder()
-            .add(ResizeOp(224, 224, ResizeOp.ResizeMethod.NEAREST_NEIGHBOR))
+            .add(ResizeOp(71, 71, ResizeOp.ResizeMethod.NEAREST_NEIGHBOR))
 //            .add(NormalizeOp(0f, 225f))
-            .add(CastOp(DataType.UINT8))
+            .add(CastOp(DataType.FLOAT32))
             .build()
 
         val tensorImage = imageProcessor.process(TensorImage.fromBitmap(toBitmap(image)))

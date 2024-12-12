@@ -49,6 +49,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.room.ktx)
     val cameraxVersion = "1.3.0"
 
     implementation(libs.androidx.core.ktx)
@@ -60,6 +61,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.androidx.navigation.ui.ktx)
+
+    implementation ("com.google.mediapipe:tasks-vision:0.10.14")
 
     implementation(libs.tensorflow.lite.support)
     implementation(libs.tensorflow.lite.metadata)
