@@ -215,7 +215,8 @@ class HandLandmarkerHelper(
         val inferenceTime = finishTimeMs - result.timestampMs()
         val landmarks = result.landmarks()
 
-        val aslTranslator = ASLTranslatorHelper(context, "your_model_path", object : ASLTranslatorHelper.TranslationListener {
+        val aslTranslator = ASLTranslatorHelper(context, "model_asltflite_with_metadata.tflite",
+            object : ASLTranslatorHelper.TranslationListener {
             override fun onTranslationResult(letter: String, confidence: Float, inferenceTime: Long) {
                 // Handle the translated result here (e.g., show it on the UI)
                 Log.d(TAG, "Translated letter: $letter with confidence: $confidence")

@@ -4,11 +4,11 @@ import android.content.Context
 import android.os.SystemClock
 import android.util.Log
 import org.tensorflow.lite.DataType
+import org.tensorflow.lite.support.tensorbuffer.TensorBuffer
+import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmark
+import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarkerResult
 import org.tensorflow.lite.Interpreter
 import org.tensorflow.lite.support.common.FileUtil
-import org.tensorflow.lite.support.tensorbuffer.TensorBuffer
-import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarkerResult
-import com.google.mediapipe.tasks.components.containers.NormalizedLandmark
 
 class ASLTranslatorHelper(
     private val context: Context,
@@ -19,7 +19,6 @@ class ASLTranslatorHelper(
 
     init {
         try {
-            // Load the TFLite model
             val model = FileUtil.loadMappedFile(context, modelPath)
             val options = Interpreter.Options().apply { setNumThreads(4) }
             tflite = Interpreter(model, options)
@@ -30,7 +29,7 @@ class ASLTranslatorHelper(
     }
 
     fun translateLandmarksToASL(result: HandLandmarkerResult) {
-        val handLandmarks = result.landmarks() // List<List<NormalizedLandmark>>
+        val handLandmarks = result.landmarks()  // List<List<NormalizedLandmark>>
 
         if (handLandmarks.isEmpty() || handLandmarks[0].isEmpty()) {
             listener.onError("No hand landmarks detected")
@@ -40,9 +39,10 @@ class ASLTranslatorHelper(
         // Flatten landmark coordinates (x, y, z) into an input array
         val inputArray = FloatArray(63) // 21 landmarks * 3 coordinates
         handLandmarks[0].forEachIndexed { index, normalizedLandmark ->
-            inputArray[index * 3] = normalizedLandmark.x() // x coordinate
-            inputArray[index * 3 + 1] = normalizedLandmark.y() // y coordinate
-            inputArray[index * 3 + 2] = normalizedLandmark.z() // z coordinate
+            // Assuming NormalizedLandmark has methods getX(), getY(), getZ()
+            inputArray[index * 3] = normalizedLandmark.x() // Or use appropriate getter for x
+            inputArray[index * 3 + 1] = normalizedLandmark.y() // Or use appropriate getter for y
+            inputArray[index * 3 + 2] = normalizedLandmark.z() // Or use appropriate getter for z
         }
 
         // Prepare input tensor
@@ -71,14 +71,15 @@ class ASLTranslatorHelper(
         if (predictedIndex != -1) {
             val predictedLetter = ('A' + predictedIndex).toString()
             Log.d(TAG, "Predicted letter: $predictedLetter with confidence: $confidence")
-            listener.onTranslationResult(predictedLetter)
+            listener.onTranslationResult(predictedLetter, confidence, inferenceTime)
         } else {
             listener.onError("Unable to recognize gesture")
         }
     }
 
+
     interface TranslationListener {
-        fun onTranslationResult(result: String)
+        fun onTranslationResult(letter: String, confidence: Float, inferenceTime: Long)
         fun onError(error: String)
     }
 
