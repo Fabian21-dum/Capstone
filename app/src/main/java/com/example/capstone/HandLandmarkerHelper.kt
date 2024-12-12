@@ -1,5 +1,6 @@
 package com.example.capstone
 
+import CSVHelper
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -16,6 +17,7 @@ import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarker
 import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarkerResult
 import com.google.mediapipe.framework.image.MPImage
+import com.google.mediapipe.tasks.components.containers.NormalizedLandmark
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.core.Delegate
 
@@ -27,10 +29,12 @@ class HandLandmarkerHelper(
     var currentDelegate: Int = DELEGATE_CPU,
     var runningMode: RunningMode = RunningMode.IMAGE,
     val context: Context,
-    // this listener is only used when running in RunningMode.LIVE_STREAM
-    val handLandmarkerHelperListener: LandmarkerListener? = null
+    val handLandmarkerHelperListener: LandmarkerListener
 ) {
     private var handLandmarker: HandLandmarker? = null
+    private val listener = handLandmarkerHelperListener
+
+    private val csvHelper = CSVHelper(context)
 
     init {
         setupHandLandmarker()
@@ -44,19 +48,6 @@ class HandLandmarkerHelper(
         val baseOptionBuilder = BaseOptions.builder()
         baseOptionBuilder.setDelegate(Delegate.CPU)
         baseOptionBuilder.setModelAssetPath(MP_HAND_LANDMARKER_TASK)
-
-        when (runningMode) {
-            RunningMode.LIVE_STREAM -> {
-                if (handLandmarkerHelperListener == null) {
-                    throw IllegalStateException(
-                        "handLandmarkerHelperListener must be set when runningMode is LIVE_STREAM."
-                    )
-                }
-            }
-            else -> {
-                // no-op
-            }
-        }
 
         try {
             val baseOptions = baseOptionBuilder.build()
@@ -78,17 +69,17 @@ class HandLandmarkerHelper(
 
             handLandmarker = HandLandmarker.createFromOptions(context, options)
         } catch (e: IllegalStateException) {
-            handLandmarkerHelperListener?.onError(
+            handLandmarkerHelperListener.onError(
                 "Hand Landmarker failed to initialize. See error logs for details"
             )
             Log.e(TAG, "MediaPipe failed to load the task with error: " + e.message)
-            e.printStackTrace() // Log the stack trace for more detailed error information
+            e.printStackTrace()
         } catch (e: RuntimeException) {
-            handLandmarkerHelperListener?.onError(
+            handLandmarkerHelperListener.onError(
                 "Hand Landmarker failed to initialize. See error logs for details", GPU_ERROR
             )
             Log.e(TAG, "Image classifier failed to load model with error: " + e.message)
-            e.printStackTrace() // Log the stack trace for more detailed error information
+            e.printStackTrace()
         }
     }
 
@@ -104,26 +95,34 @@ class HandLandmarkerHelper(
 
         try {
             val bitmap = imageProxyToBitmap(imageProxy)
-            imageProxy.close()
 
-            val matrix = Matrix().apply {
-                postRotate(imageProxy.imageInfo.rotationDegrees.toFloat())
-                if (isFrontCamera) {
-                    postScale(-1f, 1f, bitmap.width / 2f, bitmap.height / 2f)
+            // Ensure the imageProxy is closed properly
+            try {
+                val matrix = Matrix().apply {
+                    postRotate(imageProxy.imageInfo.rotationDegrees.toFloat())
+                    if (isFrontCamera) {
+                        postScale(-1f, 1f, bitmap.width / 2f, bitmap.height / 2f)
+                    }
                 }
+
+                val rotatedBitmap = Bitmap.createBitmap(
+                    bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true
+                )
+
+                Log.d(TAG, "Bitmap dimensions after rotation: ${rotatedBitmap.width}x${rotatedBitmap.height}")
+
+                val mpImage = BitmapImageBuilder(rotatedBitmap).build()
+                detectAsync(mpImage, frameTime)
+            } finally {
+                imageProxy.close()  // Make sure imageProxy is always closed
             }
-
-            val rotatedBitmap = Bitmap.createBitmap(
-                bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true
-            )
-
-            Log.d(TAG, "Bitmap dimensions after rotation: ${rotatedBitmap.width}x${rotatedBitmap.height}")
-
-            val mpImage = BitmapImageBuilder(rotatedBitmap).build()
-            detectAsync(mpImage, frameTime)
         } catch (e: Exception) {
             Log.e(TAG, "Error during detectLiveStream processing", e)
-            imageProxy.close()
+            try {
+                imageProxy.close()  // Ensure closing in case of errors
+            } catch (closeException: Exception) {
+                Log.e(TAG, "Error closing imageProxy", closeException)
+            }
         }
     }
 
@@ -142,11 +141,11 @@ class HandLandmarkerHelper(
         }
     }
 
+    // This method handles the image result processing
     fun detectImage(image: Bitmap): ResultBundle? {
         if (runningMode != RunningMode.IMAGE) {
             throw IllegalArgumentException(
-                "Attempting to call detectImage" +
-                        " while not using RunningMode.IMAGE"
+                "Attempting to call detectImage while not using RunningMode.IMAGE"
             )
         }
 
@@ -155,6 +154,33 @@ class HandLandmarkerHelper(
 
         handLandmarker?.detect(mpImage)?.also { landmarkResult ->
             val inferenceTimeMs = SystemClock.uptimeMillis() - startTime
+
+            // Log detected landmarks for debugging
+            val landmarks = landmarkResult.landmarks()
+            Log.d(TAG, "Detected landmarks: ${landmarks.size}")
+
+            if (landmarks.isEmpty()) {
+                Log.e(TAG, "No landmarks detected.")
+            }
+
+            // ASL Translation
+            val aslTranslator = ASLTranslatorHelper(context, "model_asltflite_with_metadata.tflite", object : ASLTranslatorHelper.ASLTranslationListener {
+                override fun onTranslationSuccess(letter: String, confidence: Float, inferenceTime: Long) {
+                    // Log to CSV when a translation is successful
+                    csvHelper.appendTranslationToCSV(letter, confidence, inferenceTime)
+
+                    // Log translation details to console
+                    Log.d(TAG, "Translated ASL letter: $letter, Confidence: $confidence, Inference Time: $inferenceTime ms")
+                }
+
+                override fun onTranslationError(errorMessage: String) {
+                    Log.e(TAG, "Translation error: $errorMessage")
+                }
+            })
+
+            // Flatten landmarks before passing to translator
+            aslTranslator.translateLandmarksToASL(landmarks.flatten())
+
             return ResultBundle(
                 listOf(landmarkResult),
                 inferenceTimeMs,
@@ -163,11 +189,10 @@ class HandLandmarkerHelper(
             )
         }
 
-        handLandmarkerHelperListener?.onError(
-            "Hand Landmarker failed to detect."
-        )
+        handLandmarkerHelperListener?.onError("Hand Landmarker failed to detect.")
         return null
     }
+
     fun clearHandLandmarker() {
         handLandmarker?.close()
         handLandmarker = null
@@ -215,20 +240,30 @@ class HandLandmarkerHelper(
         val inferenceTime = finishTimeMs - result.timestampMs()
         val landmarks = result.landmarks()
 
-        val aslTranslator = ASLTranslatorHelper(context, "model_asltflite_with_metadata.tflite",
-            object : ASLTranslatorHelper.TranslationListener {
-            override fun onTranslationResult(letter: String, confidence: Float, inferenceTime: Long) {
-                // Handle the translated result here (e.g., show it on the UI)
-                Log.d(TAG, "Translated letter: $letter with confidence: $confidence")
+        // Log detected landmarks for debugging
+        Log.d(TAG, "Landmarks detected in livestream: ${landmarks.size}")
+
+        if (landmarks.isEmpty()) {
+            Log.e(TAG, "No landmarks detected in livestream.")
+        }
+
+        // ASL Translation
+        val aslTranslator = ASLTranslatorHelper(context, "modelAll3.tflite", object : ASLTranslatorHelper.ASLTranslationListener {
+            override fun onTranslationSuccess(letter: String, confidence: Float, inferenceTime: Long) {
+                // Log to CSV when a translation is successful
+                csvHelper.appendTranslationToCSV(letter, confidence, inferenceTime)
+
+                // Log translation details to console
+                Log.d(TAG, "Translated ASL letter: $letter, Confidence: $confidence, Inference Time: $inferenceTime ms")
             }
 
-            override fun onError(error: String) {
-                Log.e(TAG, "Translation error: $error")
+            override fun onTranslationError(errorMessage: String) {
+                Log.e(TAG, "Translation error: $errorMessage")
             }
         })
 
-        // Use the landmarks to translate to ASL
-        aslTranslator.translateLandmarksToASL(result)
+        // Flatten landmarks before passing to translator
+        aslTranslator.translateLandmarksToASL(landmarks.flatten())
 
         handLandmarkerHelperListener?.onResults(
             ResultBundle(
@@ -271,3 +306,5 @@ class HandLandmarkerHelper(
         fun onResults(resultBundle: ResultBundle)
     }
 }
+
+

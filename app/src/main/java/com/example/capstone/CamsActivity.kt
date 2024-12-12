@@ -23,16 +23,16 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-class CamsActivity : AppCompatActivity(), HandLandmarkerHelper.LandmarkerListener {
+class CamsActivity : AppCompatActivity(), HandLandmarkerHelper.LandmarkerListener,
+    ASLTranslatorHelper.ASLTranslationListener {
 
     private lateinit var cameraExecutor: ExecutorService
-    private var handLandmarkerHelper: HandLandmarkerHelper? = null // Make it nullable
+    private var handLandmarkerHelper: HandLandmarkerHelper? = null
     private lateinit var binding: ActivityCamsBinding
     private lateinit var previewView: PreviewView
     private lateinit var overlayView: OverlayView
     private var isFrontCamera = true
     private lateinit var aslTranslatorHelper: ASLTranslatorHelper
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,21 +42,25 @@ class CamsActivity : AppCompatActivity(), HandLandmarkerHelper.LandmarkerListene
         overlayView = binding.overlayView
         previewView = binding.previewView
 
-        // Initialize HandLandmarkerHelper
+        // Initialize HandLandmarkerHelper and ASLTranslatorHelper
         setupHandLandmarker()
+        aslTranslatorHelper = ASLTranslatorHelper(
+            context = this,
+            modelPath = "modelAll3.tflite",
+            listener = this
+        )
 
+        // Initialize camera executor with a fixed thread pool (ensure single thread processing)
+        cameraExecutor = Executors.newFixedThreadPool(1)
 
-        cameraExecutor = Executors.newSingleThreadExecutor()
-
-        // Set up camera switch
+        // Camera switch functionality
         binding.camera.setOnClickListener {
-            isFrontCamera = !isFrontCamera // Toggle the camera
-            startCamera() // Restart the camera with the new camera selector
+            isFrontCamera = !isFrontCamera
+            startCamera()
         }
 
-        // Set up back button to go back to the dashboard
+        // Back button functionality
         binding.back.setOnClickListener {
-            // Perform necessary cleanup
             cleanupAndFinish()
         }
 
@@ -74,33 +78,38 @@ class CamsActivity : AppCompatActivity(), HandLandmarkerHelper.LandmarkerListene
                 CameraSelector.DEFAULT_BACK_CAMERA
             }
 
-            // Create a Preview use case
+            // Create Preview use case
             val preview = Preview.Builder()
                 .setTargetResolution(Size(640, 480))
                 .build()
 
-            preview.setSurfaceProvider(binding.previewView.surfaceProvider)
+            preview.setSurfaceProvider(previewView.surfaceProvider)
 
-            // Set up ImageAnalysis use case
+            // Set up ImageAnalysis use case with STRATEGY_KEEP_ONLY_LATEST to avoid buffer overflow
             val imageAnalysis = ImageAnalysis.Builder()
                 .setTargetResolution(Size(640, 480))
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST) // Keep only the latest frame
                 .build()
 
             imageAnalysis.setAnalyzer(cameraExecutor) { imageProxy ->
-                if (handLandmarkerHelper != null) {
-                    handLandmarkerHelper?.detectLiveStream(
-                        imageProxy = imageProxy,
-                        isFrontCamera = isFrontCamera
-                    )
-                } else {
-                    Log.e(TAG, "HandLandmarkerHelper is not initialized")
-                    imageProxy.close() // Ensure imageProxy is always closed to avoid memory leaks
+                try {
+                    Log.d(TAG, "Acquiring ImageProxy: ${imageProxy.hashCode()}")
+                    if (handLandmarkerHelper != null) {
+                        // Perform hand detection on the image frame
+                        handLandmarkerHelper?.detectLiveStream(imageProxy, isFrontCamera)
+                    } else {
+                        Log.e(TAG, "HandLandmarkerHelper is not initialized")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error processing image: ${e.message}", e)
+                } finally {
+                    Log.d(TAG, "Closing ImageProxy: ${imageProxy.hashCode()}")
+                    imageProxy.close() // Ensure that imageProxy is closed after processing
                 }
             }
 
             try {
-                cameraProvider.unbindAll() // Unbind the previous use cases
+                cameraProvider.unbindAll() // Unbind any previous use cases
                 cameraProvider.bindToLifecycle(
                     this,
                     cameraSelector,
@@ -113,16 +122,20 @@ class CamsActivity : AppCompatActivity(), HandLandmarkerHelper.LandmarkerListene
         }, ContextCompat.getMainExecutor(this))
     }
 
-    private fun cleanupAndFinish() {
+    private fun handleImageProxy(imageProxy: ImageProxy) {
         try {
-            handLandmarkerHelper?.clearHandLandmarker() // Ensure HandLandmarker is cleared
-        } catch (e: Exception) {
-            Log.e("CamsActivity", "Error clearing HandLandmarker: ${e.message}")
+            // Process the image
+            if (handLandmarkerHelper != null) {
+                handLandmarkerHelper?.detectLiveStream(imageProxy, isFrontCamera)
+            } else {
+                Log.e(TAG, "HandLandmarkerHelper is not properly initialized yet.")
+            }
+        } catch (e: MediaPipeException) {
+            Log.e(TAG, "Error processing frame: ${e.message}")
+        } finally {
+            // Always ensure the image is closed to prevent memory leaks
+            imageProxy.close()
         }
-
-        // Shut down camera executor
-        cameraExecutor.shutdown()
-        finish() // Finish the activity after cleanup
     }
 
     private fun setupHandLandmarker() {
@@ -135,7 +148,7 @@ class CamsActivity : AppCompatActivity(), HandLandmarkerHelper.LandmarkerListene
                     minHandTrackingConfidence = 0.5f,
                     minHandPresenceConfidence = 0.5f,
                     maxNumHands = 1,
-                    currentDelegate = HandLandmarkerHelper.DELEGATE_CPU, // or DELEGATE_GPU
+                    currentDelegate = HandLandmarkerHelper.DELEGATE_CPU, // Adjust as needed
                     runningMode = RunningMode.LIVE_STREAM,
                     handLandmarkerHelperListener = this
                 )
@@ -146,34 +159,15 @@ class CamsActivity : AppCompatActivity(), HandLandmarkerHelper.LandmarkerListene
         }
     }
 
-    private fun handleImageProxy(imageProxy: ImageProxy) {
+    private fun cleanupAndFinish() {
         try {
-            // Check if handLandmarkerHelper is not null, implying it's initialized
-            if (handLandmarkerHelper != null) {
-                handLandmarkerHelper?.detectLiveStream(imageProxy, isFrontCamera)
-            } else {
-                Log.e(TAG, "HandLandmarkerHelper is not properly initialized yet.")
-            }
-        } catch (e: MediaPipeException) {
-            Log.e(TAG, "MediaPipeException while processing frame: ${e.message}", e)
-        } finally {
-            imageProxy.close() // Ensure the image is always closed
+            handLandmarkerHelper?.clearHandLandmarker() // Cleanup HandLandmarker
+        } catch (e: Exception) {
+            Log.e("CamsActivity", "Error clearing HandLandmarker: ${e.message}")
         }
-    }
 
-
-    override fun onPause() {
-        super.onPause()
-        if (!cameraExecutor.isShutdown) {
-            cameraExecutor.execute { handLandmarkerHelper?.clearHandLandmarker() }
-        } else {
-            Log.w(TAG, "cameraExecutor is already shut down.")
-        }
-    }
-
-    override fun onBackPressed() {
-        cleanupAndFinish() // Ensure cleanup is done before finishing the activity
-        super.onBackPressed()
+        cameraExecutor.shutdown() // Shutdown the executor
+        finish() // Finish the activity after cleanup
     }
 
     override fun onError(error: String, errorCode: Int) {
@@ -185,66 +179,48 @@ class CamsActivity : AppCompatActivity(), HandLandmarkerHelper.LandmarkerListene
     override fun onResults(resultBundle: HandLandmarkerHelper.ResultBundle) {
         runOnUiThread {
             if (resultBundle.results.isNotEmpty()) {
-                for (handLandmarks in resultBundle.results) {
-                    for (landmarkList in handLandmarks.landmarks()) {
-                        overlayView.updateLandmarks(landmarkList)
+                val handLandmarkerResult = resultBundle.results[0]
+                val landmarks = handLandmarkerResult.landmarks().flatten()
 
-                        // Translate landmarks to ASL
-                        val inputArray = FloatArray(63) // Assuming 21 landmarks with 3 coordinates each (x, y, z)
-                        landmarkList.forEachIndexed { index, landmark ->
-                            inputArray[index * 3] = landmark.x()
-                            inputArray[index * 3 + 1] = landmark.y()
-                            inputArray[index * 3 + 2] = landmark.z()
-                        }
-
-//                        // Pass the inputArray to ASLTranslatorHelper for translation
-//                        val translatedLetter = aslTranslatorHelper.translate(inputArray)
-//
-//                        // Update the TextView with the translated letter
-//                        binding.translate.text = translatedLetter
-                    }
+                if (landmarks.isEmpty()) {
+                    Log.e(TAG, "No landmarks detected.")
+                    binding.translate.text = "No hand detected"
+                    return@runOnUiThread
                 }
+
+                val translationResult = aslTranslatorHelper.translateLandmarksToASL(landmarks)
+                binding.translate.text = translationResult.letter
+                Log.d("ASLTranslator", "Translated letter: ${translationResult.letter}")
             } else {
                 Log.d("CamsActivity", "No hands detected")
+                binding.translate.text = "No hand detected"
             }
         }
     }
 
-    private fun drawLandmark(x: Float, y: Float) {
-        val adjustedX = x * overlayView.width
-        val adjustedY = y * overlayView.height
-
-        // Create a NormalizedLandmark object
-        val landmark = NormalizedLandmark.create(
-            adjustedX / overlayView.width,  // Normalized x-coordinate (0 to 1)
-            adjustedY / overlayView.height, // Normalized y-coordinate (0 to 1)
-            0f // Assuming z is 0 as it's not provided
-        )
-
-        // Update landmarks in the overlay
-        overlayView.updateLandmarks(listOf(landmark))
+    override fun onTranslationSuccess(letter: String, confidence: Float, inferenceTime: Long) {
+        binding.translate.text = letter
+        Log.d("ASLTranslator", "Translation succeeded: $letter")
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        if (!cameraExecutor.isShutdown) {
-            cameraExecutor.shutdown()
-            try {
-                if (!cameraExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
-                    Log.w(TAG, "cameraExecutor did not terminate in time; forcing shutdown.")
-                    cameraExecutor.shutdownNow()
-                }
-            } catch (e: InterruptedException) {
-                Log.e(TAG, "Interrupted while waiting for executor shutdown.", e)
-                cameraExecutor.shutdownNow() // Force shutdown if interrupted
-            }
-        }
+    override fun onTranslationError(errorMessage: String) {
+        Toast.makeText(this, "Translation Error: $errorMessage", Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        handLandmarkerHelper?.clearHandLandmarker() // Cleanup onPause
     }
 
     override fun onResume() {
         super.onResume()
         if (cameraExecutor.isShutdown) {
-            cameraExecutor = Executors.newSingleThreadExecutor()
+            cameraExecutor = Executors.newFixedThreadPool(1) // Reinitialize executor on resume
         }
+    }
+
+    override fun onBackPressed() {
+        cleanupAndFinish() // Ensure cleanup on back press
+        super.onBackPressed()
     }
 }

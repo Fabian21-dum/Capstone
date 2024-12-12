@@ -63,6 +63,7 @@ dependencies {
     implementation(libs.androidx.navigation.ui.ktx)
 
     implementation ("com.google.mediapipe:tasks-vision:0.10.14")
+    implementation("com.opencsv:opencsv:5.6")
 
     implementation(libs.tensorflow.lite.support)
     implementation(libs.tensorflow.lite.metadata)
