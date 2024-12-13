@@ -33,7 +33,9 @@ class AlphabetListAdapter : ListAdapter<Alphabet, AlphabetListAdapter.ViewHolder
             }
         }
 
-        fun bind(alphabet: Alphabet) {}
+        fun bind(alphabet: Alphabet) {
+            binding.tvAlphabet.text = alphabet.alphabet
+        }
     }
     
     companion object {

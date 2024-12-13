@@ -33,6 +33,7 @@ class CamsActivity : AppCompatActivity(), HandLandmarkerHelper.LandmarkerListene
     private lateinit var overlayView: OverlayView
     private var isFrontCamera = true
     private lateinit var aslTranslatorHelper: ASLTranslatorHelper
+    private var isProcessingFrame = false // Flag to avoid race conditions
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,8 +51,8 @@ class CamsActivity : AppCompatActivity(), HandLandmarkerHelper.LandmarkerListene
             listener = this
         )
 
-        // Initialize camera executor with a fixed thread pool (ensure single thread processing)
-        cameraExecutor = Executors.newFixedThreadPool(1)
+        // Initialize camera executor with a fixed thread pool (single-threaded processing)
+        cameraExecutor = Executors.newSingleThreadExecutor()
 
         // Camera switch functionality
         binding.camera.setOnClickListener {
@@ -85,27 +86,14 @@ class CamsActivity : AppCompatActivity(), HandLandmarkerHelper.LandmarkerListene
 
             preview.setSurfaceProvider(previewView.surfaceProvider)
 
-            // Set up ImageAnalysis use case with STRATEGY_KEEP_ONLY_LATEST to avoid buffer overflow
+            // Set up ImageAnalysis use case with STRATEGY_KEEP_ONLY_LATEST
             val imageAnalysis = ImageAnalysis.Builder()
                 .setTargetResolution(Size(640, 480))
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST) // Keep only the latest frame
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
 
             imageAnalysis.setAnalyzer(cameraExecutor) { imageProxy ->
-                try {
-                    Log.d(TAG, "Acquiring ImageProxy: ${imageProxy.hashCode()}")
-                    if (handLandmarkerHelper != null) {
-                        // Perform hand detection on the image frame
-                        handLandmarkerHelper?.detectLiveStream(imageProxy, isFrontCamera)
-                    } else {
-                        Log.e(TAG, "HandLandmarkerHelper is not initialized")
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error processing image: ${e.message}", e)
-                } finally {
-                    Log.d(TAG, "Closing ImageProxy: ${imageProxy.hashCode()}")
-                    imageProxy.close() // Ensure that imageProxy is closed after processing
-                }
+                processImageFrame(imageProxy)
             }
 
             try {
@@ -122,19 +110,20 @@ class CamsActivity : AppCompatActivity(), HandLandmarkerHelper.LandmarkerListene
         }, ContextCompat.getMainExecutor(this))
     }
 
-    private fun handleImageProxy(imageProxy: ImageProxy) {
-        try {
-            // Process the image
-            if (handLandmarkerHelper != null) {
-                handLandmarkerHelper?.detectLiveStream(imageProxy, isFrontCamera)
-            } else {
-                Log.e(TAG, "HandLandmarkerHelper is not properly initialized yet.")
-            }
-        } catch (e: MediaPipeException) {
-            Log.e(TAG, "Error processing frame: ${e.message}")
-        } finally {
-            // Always ensure the image is closed to prevent memory leaks
+    private fun processImageFrame(imageProxy: ImageProxy) {
+        if (isProcessingFrame || handLandmarkerHelper == null) {
             imageProxy.close()
+            return
+        }
+
+        isProcessingFrame = true
+        try {
+            handLandmarkerHelper?.detectLiveStream(imageProxy, isFrontCamera)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error processing frame: ${e.message}", e)
+        } finally {
+            imageProxy.close()
+            isProcessingFrame = false // Ensure the flag is reset
         }
     }
 
@@ -148,7 +137,7 @@ class CamsActivity : AppCompatActivity(), HandLandmarkerHelper.LandmarkerListene
                     minHandTrackingConfidence = 0.5f,
                     minHandPresenceConfidence = 0.5f,
                     maxNumHands = 1,
-                    currentDelegate = HandLandmarkerHelper.DELEGATE_CPU, // Adjust as needed
+                    currentDelegate = HandLandmarkerHelper.DELEGATE_CPU,
                     runningMode = RunningMode.LIVE_STREAM,
                     handLandmarkerHelperListener = this
                 )
@@ -166,7 +155,17 @@ class CamsActivity : AppCompatActivity(), HandLandmarkerHelper.LandmarkerListene
             Log.e("CamsActivity", "Error clearing HandLandmarker: ${e.message}")
         }
 
-        cameraExecutor.shutdown() // Shutdown the executor
+        if (!cameraExecutor.isShutdown) {
+            cameraExecutor.shutdown()
+            try {
+                if (!cameraExecutor.awaitTermination(1, TimeUnit.SECONDS)) {
+                    cameraExecutor.shutdownNow()
+                }
+            } catch (e: InterruptedException) {
+                cameraExecutor.shutdownNow()
+            }
+        }
+
         finish() // Finish the activity after cleanup
     }
 
@@ -183,7 +182,6 @@ class CamsActivity : AppCompatActivity(), HandLandmarkerHelper.LandmarkerListene
                 val landmarks = handLandmarkerResult.landmarks().flatten()
 
                 if (landmarks.isEmpty()) {
-                    Log.e(TAG, "No landmarks detected.")
                     binding.translate.text = "No hand detected"
                     return@runOnUiThread
                 }
@@ -192,7 +190,6 @@ class CamsActivity : AppCompatActivity(), HandLandmarkerHelper.LandmarkerListene
                 binding.translate.text = translationResult.letter
                 Log.d("ASLTranslator", "Translated letter: ${translationResult.letter}")
             } else {
-                Log.d("CamsActivity", "No hands detected")
                 binding.translate.text = "No hand detected"
             }
         }
@@ -209,18 +206,17 @@ class CamsActivity : AppCompatActivity(), HandLandmarkerHelper.LandmarkerListene
 
     override fun onPause() {
         super.onPause()
-        handLandmarkerHelper?.clearHandLandmarker() // Cleanup onPause
+        handLandmarkerHelper?.clearHandLandmarker()
     }
 
     override fun onResume() {
         super.onResume()
         if (cameraExecutor.isShutdown) {
-            cameraExecutor = Executors.newFixedThreadPool(1) // Reinitialize executor on resume
+            cameraExecutor = Executors.newSingleThreadExecutor() // Reinitialize the executor
         }
     }
 
     override fun onBackPressed() {
         cleanupAndFinish() // Ensure cleanup on back press
-        super.onBackPressed()
     }
 }
